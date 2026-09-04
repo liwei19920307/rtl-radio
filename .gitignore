@@ -1,0 +1,9 @@
+node_modules/
+dist/
+src-tauri/target/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+src-tauri/icons/rtl_radio_source.jpg
+dist/release/

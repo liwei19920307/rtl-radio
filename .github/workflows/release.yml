@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --bundles app
+            artifact: RTL-Radio-macos-universal.zip
+            path: src-tauri/target/release/bundle/macos/*.app
+          - platform: windows-latest
+            args: --bundles msi
+            artifact: RTL-Radio-windows-x64.msi
+            path: src-tauri/target/release/bundle/msi/*.msi
+          - platform: ubuntu-22.04
+            args: --bundles deb,appimage
+            artifact: RTL-Radio-linux-x64
+            path: src-tauri/target/release/bundle/
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev
+
+      - run: npm ci
+      - run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Package macOS
+        if: matrix.platform == 'macos-latest'
+        run: |
+          cd src-tauri/target/release/bundle/macos
+          zip -r "$GITHUB_WORKSPACE/RTL-Radio-macos.zip" "RTL Radio.app"
+
+      - name: Upload macOS
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RTL-Radio-macos
+          path: RTL-Radio-macos.zip
+
+      - name: Upload Windows
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RTL-Radio-windows
+          path: src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Upload Linux
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RTL-Radio-linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp artifacts/RTL-Radio-macos/RTL-Radio-macos.zip release/
+          cp artifacts/RTL-Radio-windows/*.msi release/
+          cp artifacts/RTL-Radio-linux/deb/*.deb release/
+          cp artifacts/RTL-Radio-linux/appimage/*.AppImage release/
+          ls -lh release/
+
+      - name: Resolve release tag
+        id: meta
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "tag=v${VERSION}-build.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: RTL Radio ${{ steps.meta.outputs.version }}
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: release/*

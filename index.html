@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RTL Radio</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <h1>RTL RADIO</h1>
+            <p id="subtitle" class="subtitle">SDR RECEIVER</p>
+          </div>
+        </div>
+        <div class="topbar-viz" title="中心频段频谱可视化（点 ◉ 切换模式）">
+          <canvas id="audio-viz" class="audio-viz-canvas" aria-hidden="true"></canvas>
+          <button type="button" id="audio-viz-mode" class="viz-mode-btn" title="切换可视化模式">◉</button>
+        </div>
+        <div class="topbar-meta">
+          <div class="topbar-icons">
+            <div class="help-wrap">
+              <button type="button" class="icon-btn icon-help" aria-label="操作说明" aria-describedby="help-popover">i</button>
+            <div id="help-popover" class="help-popover" role="tooltip">
+              <div class="help-popover-title">操作手册</div>
+              <section>
+                <h4>快捷键</h4>
+                <dl class="help-dl">
+                  <dt>Space</dt><dd>开始 / 停止收听</dd>
+                  <dt>R</dt><dd>开始 / 停止录音</dd>
+                  <dt>← →</dt><dd>频率步进（模式步长）</dd>
+                  <dt>Shift + ← →</dt><dd>×10 大步进</dd>
+                  <dt>Alt + ← →</dt><dd>细调（航空 1 kHz 等）</dd>
+                </dl>
+              </section>
+              <section>
+                <h4>频谱 / 瀑布图</h4>
+                <dl class="help-dl">
+                  <dt>单击</dt><dd>调谐到点击频率</dd>
+                  <dt>滚轮</dt><dd>上下调频</dd>
+                  <dt>Alt + 滚轮</dt><dd>细调</dd>
+                  <dt>拖金色块</dt><dd>调节接收频宽</dd>
+                  <dt>右键</dt><dd>设中心 / 存预设</dd>
+                  <dt>ZOOM</dt><dd>水平缩放（低≈全带宽 2 MHz，高≈±100 Hz）</dd>
+                  <dt>RANGE</dt><dd>纵轴窗高 dB（顶 0，底 0−RANGE）</dd>
+                  <dt>OFFSET</dt><dd>顶边偏移 dBFS（同 SDR#）</dd>
+                  <dt>CNTRST / SPEED</dt><dd>瀑布对比度与滚动速度</dd>
+                </dl>
+              </section>
+              <section>
+                <h4>侧边栏</h4>
+                <dl class="help-dl">
+                  <dt>‹ › / ±</dt><dd>细调 / 粗调（收听按钮两侧）</dd>
+                  <dt>♡</dt><dd>收藏当前频率</dd>
+                  <dt>☰</dt><dd>收藏、预设与搜台（结果按模式保存，重启保留）</dd>
+                  <dt>模式</dt><dd>FM / 航空 AM / 火腿 NFM / USB / LSB / DSB</dd>
+                  <dt>主机/端口</dt><dd>rtl_tcp 地址</dd>
+                  <dt>缓冲</dt><dd>网络音频缓冲；家里转发/公网请选「稳定」</dd>
+                  <dt>静噪</dt><dd>无载波静音；滑块 0–100（同 SDR#）。FM/NFM 噪声静噪，AM/SSB 载波静噪</dd>
+                  <dt>录音</dt><dd>保存立体声 WAV 到「下载」文件夹</dd>
+                  <dt>人声</dt><dd>有 RF 载波时自动录；开静噪更稳。FM 宽带判台，火腿/SSB 窄带快响应</dd>
+                  <dt>📁</dt><dd>勾选后停录打开录音所在文件夹</dd>
+                </dl>
+              </section>
+              <section>
+                <h4>顶栏</h4>
+                <dl class="help-dl">
+                  <dt>顶栏可视化</dt><dd>中心频段真实频谱柱（与 RANGE/OFFSET 同刻度）；悬停点 ◉ 切换柱状/镜像/波形/RGB 等</dd>
+                  <dt>i</dt><dd>本操作说明</dd>
+                  <dt>↺</dt><dd>恢复连接与收听设置（保留收藏、搜台结果）</dd>
+                  <dt>绿点</dt><dd>rtl_tcp 已连接</dd>
+                  <dt>IQ丢 / 音</dt><dd>网络空档/溢出、音频断续累计（越小越稳）</dd>
+                  <dt>LEVEL</dt><dd>信号强度（绿=有信号；开静噪时绿=载波开口）</dd>
+                </dl>
+              </section>
+            </div>
+            </div>
+            <button type="button" id="reset-settings" class="icon-btn icon-reset" title="恢复默认设置（保留收藏与搜台）" aria-label="恢复默认">↺</button>
+          </div>
+          <span id="conn-dot" class="conn-dot" title="未连接"></span>
+          <span id="link-quality" class="status-pill link-quality mono" title="链路质量：IQ 丢块 / 音频问题">链路 —</span>
+          <span id="status-text" class="status-pill">就绪</span>
+          <div id="level-mono" class="level-wrap level-mono" title="信号指示：黄=底噪，绿=有信号。打开静噪后绿=开口说话">
+            <span class="label">LEVEL</span>
+            <div class="level-bar"><div id="level-fill" class="level-fill"></div></div>
+          </div>
+          <div id="level-stereo" class="level-wrap level-stereo" hidden title="FM 立体声左右声道峰值">
+            <span class="label">L/R</span>
+            <div class="level-channels">
+              <div class="level-row">
+                <span class="level-ch">L</span>
+                <div class="level-bar"><div id="level-fill-l" class="level-fill"></div></div>
+              </div>
+              <div class="level-row">
+                <span class="level-ch">R</span>
+                <div class="level-bar"><div id="level-fill-r" class="level-fill"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="viz panel">
+          <div class="viz-stage">
+            <div class="viz-main">
+              <div class="viz-head">
+                <span class="label">SPECTRUM</span>
+                <span id="freq-readout" class="mono">— MHz</span>
+                <span id="span-readout" class="mono">— kHz</span>
+              </div>
+              <div id="viz-body" class="viz-body">
+                <div id="spec-wrap" class="viz-pane">
+                  <canvas id="spectrum-canvas" class="canvas" title="移动鼠标预览 · 单击调频 · 拖金色加粗块调频宽"></canvas>
+                </div>
+                <div id="viz-splitter" class="splitter" title="拖动调节频谱/瀑布区域高度"></div>
+                <div id="wf-wrap" class="viz-pane">
+                  <div class="viz-head inner">
+                    <span class="label">WATERFALL</span>
+                  </div>
+                  <canvas id="waterfall-canvas" class="canvas waterfall" title="移动鼠标预览 · 单击调频 · 拖金色加粗块调频宽"></canvas>
+                </div>
+              </div>
+            </div>
+            <aside class="viz-rail" aria-label="显示调节">
+              <label class="vrail" title="水平缩放（低=全带宽≈2M，高=±100 Hz）">
+                <span>ZOOM</span>
+                <div class="range-stack">
+                  <div class="range-shell range-v">
+                    <input id="spec-zoom" type="range" min="1" max="100" value="1" />
+                  </div>
+                </div>
+              </label>
+              <label class="vrail" title="垂直窗高 dB（最低 0…−10，最高 0…−160）">
+                <span>RANGE</span>
+                <div class="range-stack">
+                  <div class="range-shell range-v">
+                    <input id="spec-range" type="range" min="10" max="160" value="100" />
+                  </div>
+                </div>
+              </label>
+              <label class="vrail" title="顶边偏移（0→0…−RANGE；−150→−150…−150−RANGE）">
+                <span>OFFSET</span>
+                <div class="range-stack">
+                  <div class="range-shell range-v">
+                    <input id="spec-offset" type="range" min="-150" max="0" value="0" />
+                  </div>
+                </div>
+              </label>
+              <label class="vrail" title="瀑布对比度">
+                <span>CNTRST</span>
+                <div class="range-stack">
+                  <div class="range-shell range-v">
+                    <input id="wf-contrast" type="range" min="10" max="100" value="50" />
+                  </div>
+                </div>
+              </label>
+              <label class="vrail" title="瀑布滚动速度">
+                <span>SPEED</span>
+                <div class="range-stack">
+                  <div class="range-shell range-v">
+                    <input id="wf-speed" type="range" min="4" max="32" value="16" />
+                  </div>
+                </div>
+              </label>
+            </aside>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel controls">
+            <div class="ctrl-block">
+              <div class="block-title">配置</div>
+              <label class="field field-sm">
+                <span>主机</span>
+                <input id="host" type="text" value="127.0.0.1" />
+              </label>
+              <label class="field field-sm">
+                <span>端口</span>
+                <input id="port" type="number" value="1234" min="1" max="65535" />
+              </label>
+              <label class="field field-sm">
+                <span>模式</span>
+                <div class="ui-select">
+                  <select id="mode">
+                    <option value="wbfm">FM 广播</option>
+                    <option value="am">航空塔台</option>
+                    <option value="nfm">火腿 / 对讲</option>
+                    <option value="usb">USB</option>
+                    <option value="lsb">LSB</option>
+                    <option value="dsb">DSB</option>
+                  </select>
+                </div>
+              </label>
+              <label class="field field-sm" title="网络音频缓冲：局域网选低延迟；家里转发/公网选「稳定」减少断续">
+                <span>缓冲</span>
+                <div class="ui-select">
+                  <select id="buffer-preset">
+                    <option value="low_latency">低延迟（局域网）</option>
+                    <option value="balanced" selected>平衡</option>
+                    <option value="wifi">稳定（转发/远距离）</option>
+                  </select>
+                </div>
+              </label>
+            </div>
+
+            <div class="ctrl-block">
+              <div class="block-title">频率</div>
+              <div class="freq-input-row">
+                <input id="freq" type="number" value="89.7" min="87.5" max="108" step="0.1" class="freq-input mono" />
+                <button type="button" id="favorite-heart" class="icon-sq icon-sq-heart" title="收藏当前频率">♡</button>
+                <button type="button" id="open-freq-list" class="icon-sq" title="收藏与预设">☰</button>
+              </div>
+              <label class="field field-sm field-bw" title="接收机通带宽度（kHz）">
+                <span>频宽</span>
+                <input id="bandwidth-khz" type="number" min="0.2" step="any" value="200" />
+                <span id="bw-label" class="sr-only" aria-hidden="true">200</span>
+              </label>
+              <div class="tune-row">
+                <div class="tune-main">
+                  <button id="step-fine-down" type="button" class="btn btn-tune btn-fine" title="细调">‹</button>
+                  <button id="step-down" type="button" class="btn btn-tune btn-coarse">−</button>
+                  <button id="play" type="button" class="btn btn-accent btn-play">开始收听</button>
+                  <button id="step-up" type="button" class="btn btn-tune btn-coarse">+</button>
+                  <button id="step-fine-up" type="button" class="btn btn-tune btn-fine" title="细调">›</button>
+                </div>
+              </div>
+              <div class="compact-row slider-row">
+                <button type="button" id="squelch" class="btn btn-chip btn-toggle" aria-pressed="false" title="无载波时静音（FM 噪声静噪，0–100 同 SDR#）">静噪</button>
+                <div class="compact-slider">
+                  <div class="range-shell range-h range-h-sm">
+                    <input id="squelch-level" type="range" min="0" max="100" step="1" value="30" />
+                  </div>
+                  <span id="squelch-label" class="mono compact-val">30</span>
+                </div>
+              </div>
+              <div class="compact-row slider-row">
+                <button type="button" id="gain-auto" class="btn btn-chip btn-toggle" aria-pressed="false">AGC</button>
+                <div class="compact-slider">
+                  <div class="range-shell range-h range-h-sm">
+                    <input id="gain" type="range" min="0" max="49.6" step="0.1" value="30" />
+                  </div>
+                  <span id="gain-label" class="mono compact-val">30.0</span>
+                </div>
+              </div>
+              <div class="compact-row slider-row slider-row-last">
+                <span class="slider-tag mono">PPM</span>
+                <div class="compact-slider">
+                  <div class="range-shell range-h range-h-sm">
+                    <input id="ppm" type="range" min="-20" max="20" step="1" value="0" />
+                  </div>
+                  <span id="ppm-label" class="mono compact-val">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ctrl-block">
+              <div class="block-title">工具</div>
+              <div class="record-row">
+                <button id="record" type="button" class="btn btn-record-main">录音</button>
+                <div class="record-opts">
+                  <button type="button" id="reveal-finder" class="btn btn-chip btn-toggle" aria-pressed="false" title="停录后打开所在文件夹">📁</button>
+                  <button type="button" id="voice-record" class="btn btn-chip btn-toggle" aria-pressed="false" title="有 RF 载波时自动录音；开静噪更稳">人声</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div id="freq-sheet" class="freq-sheet" hidden>
+      <div class="freq-sheet-backdrop" tabindex="-1"></div>
+      <div class="freq-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="freq-sheet-title">
+        <div class="freq-sheet-head">
+          <div id="freq-sheet-title" class="freq-sheet-title">频率列表</div>
+          <button type="button" id="freq-sheet-close" class="freq-sheet-close" aria-label="关闭">×</button>
+        </div>
+        <div class="freq-sheet-body">
+          <section class="freq-sheet-section">
+            <h3 id="favorites-section-title" class="freq-section-title">收藏</h3>
+            <ul id="favorites" class="presets favorites sheet-list"></ul>
+          </section>
+          <section class="freq-sheet-section">
+            <h3 id="scan-section-title" class="freq-section-title">搜台</h3>
+            <ul id="scan-results" class="presets sheet-list scan-results"></ul>
+          </section>
+          <section class="freq-sheet-section">
+            <h3 id="presets-section-title" class="freq-section-title">预设</h3>
+            <ul id="presets" class="presets sheet-list"></ul>
+          </section>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
