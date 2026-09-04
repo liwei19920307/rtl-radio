@@ -43,7 +43,6 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev
 
       - run: npm ci
-      - run: chmod +x scripts/generate-icons.sh && ./scripts/generate-icons.sh
       - run: npm run tauri build -- ${{ matrix.args }}
 
       - name: Fix DMG volume icon (macOS)
