@@ -1,0 +1,32 @@
+[package]
+name = "rtl-radio"
+version = "1.0.0"
+description = "SDR receiver via rtl_tcp — FM, AM, NFM, SSB"
+authors = ["liwei"]
+license = "PolyForm-Noncommercial-1.0.0"
+edition = "2021"
+
+[lib]
+name = "rtl_radio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+hound = "3.5"
+cpal = "0.15"
+crossbeam-channel = "0.5"
+rustfft = "6.2"
+num-complex = "0.4"
+parking_lot = "0.12"
+socket2 = "0.5"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
