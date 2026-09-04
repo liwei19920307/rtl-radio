@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "icons": "./scripts/generate-icons.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.6",

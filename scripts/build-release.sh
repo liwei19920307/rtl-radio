@@ -11,11 +11,16 @@ mkdir -p "$OUT"
 
 npm run build
 
+if [[ "${REGENERATE_ICONS:-1}" != "0" ]]; then
+  ./scripts/generate-icons.sh
+fi
+
 build_macos() {
   echo "==> macOS DMG (aarch64)"
-  npm run tauri build -- --bundles dmg
+  npm run tauri build -- --bundles app,dmg
   DMG=(src-tauri/target/release/bundle/dmg/*.dmg)
   if [[ -f ${DMG[0]} ]]; then
+    "$ROOT/scripts/finish-dmg.sh" "${DMG[0]}"
     cp "${DMG[0]}" "$OUT/RTL-Radio-macos.dmg"
     echo "OK: $OUT/RTL-Radio-macos.dmg"
   fi
