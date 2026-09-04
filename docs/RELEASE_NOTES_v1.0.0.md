@@ -2,9 +2,15 @@
 
 | 平台 | 文件 |
 |------|------|
-| macOS | `RTL-Radio-macos.zip` |
+| macOS | `RTL Radio_1.0.0_aarch64.dmg` |
 | Windows | `RTL Radio_1.0.0_x64_en-US.msi` |
 | Linux | `RTL Radio_1.0.0_amd64.deb` 或 `RTL Radio_1.0.0_amd64.AppImage` |
+
+### macOS 安装
+
+1. 双击 `.dmg` 打开安装窗口
+2. 将 `RTL Radio.app` 拖入「应用程序」文件夹
+3. 若提示「已损坏」，在终端执行：`xattr -cr "/Applications/RTL Radio.app"`
 
 ## 测试说明
 

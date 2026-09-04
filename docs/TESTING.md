@@ -30,18 +30,15 @@
 
 ## macOS：从 Releases 下载后提示「已损坏」
 
-**不是包坏了，也不是 ARM / Intel 架构不匹配。** GitHub Actions 在 Apple Silicon（arm64）上构建，与 M 系列 Mac 一致；Intel Mac 可通过 Rosetta 运行。
+**不是包坏了，也不是 ARM / Intel 架构不匹配。** GitHub Actions 在 Apple Silicon（arm64）上构建 DMG，与 M 系列 Mac 一致；Intel Mac 可通过 Rosetta 运行。
 
-原因是：从浏览器下载的 `.app` 会被 macOS 打上**隔离（quarantine）**标记，而本项目**未做 Apple 开发者签名与公证**，系统会误报「已损坏，无法打开」。
+原因是：从浏览器下载后，macOS 会给应用打上**隔离（quarantine）**标记，而本项目**未做 Apple 开发者签名与公证**（需付费开发者账号），系统可能误报「已损坏，无法打开」。**换成 DMG 安装包并不能完全避免此问题。**
 
-**解决办法（任选其一）：**
+**安装步骤：**
 
-```bash
-# 解压后，对 .app 清除隔离属性
-xattr -cr "/path/to/RTL Radio.app"
-open "/path/to/RTL Radio.app"
-```
-
-或：**右键应用 → 打开**（首次），再在弹窗中确认打开。
+1. 双击 `.dmg`，将 `RTL Radio.app` 拖入「应用程序」
+2. 若无法打开，任选其一：
+   - 终端：`xattr -cr "/Applications/RTL Radio.app"`
+   - 右键应用 → **打开**（首次），在弹窗中确认
 
 本地 `./install-client.sh` 安装脚本已自动执行 `xattr -cr`，因此本机编译安装一般不会出现此问题。

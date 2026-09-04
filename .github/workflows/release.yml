@@ -13,9 +13,9 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            args: --bundles app
-            artifact: RTL-Radio-macos-universal.zip
-            path: src-tauri/target/release/bundle/macos/*.app
+            args: --bundles dmg
+            artifact: RTL-Radio-macos.dmg
+            path: src-tauri/target/release/bundle/dmg/*.dmg
           - platform: windows-latest
             args: --bundles msi
             artifact: RTL-Radio-windows-x64.msi
@@ -45,18 +45,12 @@ jobs:
       - run: npm ci
       - run: npm run tauri build -- ${{ matrix.args }}
 
-      - name: Package macOS
-        if: matrix.platform == 'macos-latest'
-        run: |
-          cd src-tauri/target/release/bundle/macos
-          zip -r "$GITHUB_WORKSPACE/RTL-Radio-macos.zip" "RTL Radio.app"
-
       - name: Upload macOS
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: RTL-Radio-macos
-          path: RTL-Radio-macos.zip
+          path: src-tauri/target/release/bundle/dmg/*.dmg
 
       - name: Upload Windows
         if: matrix.platform == 'windows-latest'
@@ -89,7 +83,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release
-          cp artifacts/RTL-Radio-macos/RTL-Radio-macos.zip release/
+          cp artifacts/RTL-Radio-macos/*.dmg release/
           cp artifacts/RTL-Radio-windows/*.msi release/
           cp artifacts/RTL-Radio-linux/deb/*.deb release/
           cp artifacts/RTL-Radio-linux/appimage/*.AppImage release/
