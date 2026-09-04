@@ -52,11 +52,11 @@
 
 | 平台 | 文件 |
 |------|------|
-| macOS | `RTL-Radio-macos.zip`（解压后拖入「应用程序」） |
+| macOS | `RTL Radio_*_aarch64.dmg`（打开后拖入「应用程序」） |
 | Windows | `RTL Radio_*_x64_en-US.msi` |
 | Linux | `RTL Radio_*_amd64.deb` 或 `RTL Radio_*_amd64.AppImage` |
 
-> **macOS 提示「已损坏」？** 不是 ARM 架构问题，是未签名 + 下载隔离导致。解压后执行 `xattr -cr "RTL Radio.app"` 再打开，详见 [docs/TESTING.md](docs/TESTING.md)。
+> **macOS 提示「已损坏」？** 不是 ARM 架构问题，是未做 Apple 开发者签名 + 下载隔离导致。打开 DMG 拖入「应用程序」后，若仍无法打开，执行 `xattr -cr "/Applications/RTL Radio.app"`，或右键 → 打开。详见 [docs/TESTING.md](docs/TESTING.md)。
 
 推送 `v*` 标签（如 `v1.0.0`）会自动构建并发布到 Releases；手动触发 CI 会生成预发布包（`v1.0.0-build.N`）。
 
@@ -91,7 +91,7 @@ npm run tauri build
 **跨平台构建**（在 macOS 上）：
 
 ```bash
-./scripts/build-release.sh macos     # macOS .app / .zip
+./scripts/build-release.sh macos     # macOS .dmg
 ./scripts/build-release.sh windows   # Windows .exe（zip，无安装器）
 ./scripts/build-release.sh linux     # Linux .deb + AppImage（需 Docker）
 ```

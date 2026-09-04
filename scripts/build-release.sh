@@ -12,14 +12,12 @@ mkdir -p "$OUT"
 npm run build
 
 build_macos() {
-  echo "==> macOS (aarch64)"
-  npm run tauri build -- --bundles app
-  APP="src-tauri/target/release/bundle/macos/RTL Radio.app"
-  if [[ -d "$APP" ]]; then
-    rm -rf "$OUT/RTL-Radio-macos-aarch64.app"
-    cp -R "$APP" "$OUT/RTL-Radio-macos-aarch64.app"
-    (cd "$OUT" && zip -qr "RTL-Radio-macos-aarch64.zip" "RTL-Radio-macos-aarch64.app")
-    echo "OK: $OUT/RTL-Radio-macos-aarch64.zip"
+  echo "==> macOS DMG (aarch64)"
+  npm run tauri build -- --bundles dmg
+  DMG=(src-tauri/target/release/bundle/dmg/*.dmg)
+  if [[ -f ${DMG[0]} ]]; then
+    cp "${DMG[0]}" "$OUT/RTL-Radio-macos.dmg"
+    echo "OK: $OUT/RTL-Radio-macos.dmg"
   fi
 }
 
