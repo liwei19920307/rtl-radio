@@ -52,7 +52,7 @@
 
 | 平台 | 文件 |
 |------|------|
-| macOS | `RTL Radio_*_aarch64.dmg`（打开后拖入「应用程序」） |
+| macOS | `RTL Radio_*_aarch64.dmg`（**不要下 zip**；双击 DMG 后拖入「应用程序」） |
 | Windows | `RTL Radio_*_x64_en-US.msi` |
 | Linux | `RTL Radio_*_amd64.deb` 或 `RTL Radio_*_amd64.AppImage` |
 
