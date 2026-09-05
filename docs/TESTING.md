@@ -42,3 +42,7 @@
    - 右键应用 → **打开**（首次），在弹窗中确认
 
 本地 `./install-client.sh` 安装脚本已自动执行 `xattr -cr`，因此本机编译安装一般不会出现此问题。
+
+## Windows：卸载后 exe 仍在
+
+旧版 `.msi` 安装包在**程序仍在运行时**卸载，可能因文件被占用而留下 `rtl-radio.exe`。请改用 Releases 中的 `RTL Radio_*_x64-setup.exe`（NSIS 安装器），卸载时会先关闭进程再删除文件。若仍残留，手动删除安装目录（通常在 `C:\Program Files\RTL Radio\`）即可。

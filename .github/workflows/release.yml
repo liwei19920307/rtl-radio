@@ -17,9 +17,9 @@ jobs:
             artifact: RTL-Radio-macos.dmg
             path: src-tauri/target/release/bundle/dmg/*.dmg
           - platform: windows-latest
-            args: --bundles msi
-            artifact: RTL-Radio-windows-x64.msi
-            path: src-tauri/target/release/bundle/msi/*.msi
+            args: --bundles nsis
+            artifact: RTL-Radio-windows-x64-setup.exe
+            path: src-tauri/target/release/bundle/nsis/*-setup.exe
           - platform: ubuntu-22.04
             args: --bundles deb,appimage
             artifact: RTL-Radio-linux-x64
@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RTL-Radio-windows
-          path: src-tauri/target/release/bundle/msi/*.msi
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
 
       - name: Upload Linux
         if: matrix.platform == 'ubuntu-22.04'
@@ -88,7 +88,7 @@ jobs:
         run: |
           mkdir -p release
           cp artifacts/RTL-Radio-macos/*.dmg release/
-          cp artifacts/RTL-Radio-windows/*.msi release/
+          cp artifacts/RTL-Radio-windows/*-setup.exe release/
           cp artifacts/RTL-Radio-linux/deb/*.deb release/
           cp artifacts/RTL-Radio-linux/appimage/*.AppImage release/
           ls -lh release/
