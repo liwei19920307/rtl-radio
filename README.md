@@ -53,7 +53,7 @@
 | 平台 | 文件 |
 |------|------|
 | macOS | `RTL Radio_*_aarch64.dmg`（**不要下 zip**；双击 DMG 后拖入「应用程序」） |
-| Windows | `RTL Radio_*_x64_en-US.msi` |
+| Windows | `RTL Radio_*_x64-setup.exe`（NSIS 安装器，卸载前会自动关闭程序） |
 | Linux | `RTL Radio_*_amd64.deb` 或 `RTL Radio_*_amd64.AppImage` |
 
 > **macOS 提示「已损坏」？** 不是 ARM 架构问题，是未做 Apple 开发者签名 + 下载隔离导致。打开 DMG 拖入「应用程序」后，若仍无法打开，执行 `xattr -cr "/Applications/RTL Radio.app"`，或右键 → 打开。详见 [docs/TESTING.md](docs/TESTING.md)。
@@ -86,7 +86,7 @@ npm run build
 npm run tauri build
 ```
 
-产物：`src-tauri/target/release/bundle/`（`.app` / `.msi` / `.deb` 等）。
+产物：`src-tauri/target/release/bundle/`（`.app` / `-setup.exe` / `.deb` 等）。
 
 **跨平台构建**（在 macOS 上）：
 
@@ -98,7 +98,7 @@ npm run tauri build
 
 产物在 `dist/release/`。
 
-**含 .msi 安装包的正式构建**请用 GitHub Actions（`windows-latest` / `ubuntu-22.04`），见 `.github/workflows/release.yml`，或推送 `v*` 标签自动触发。
+**含 Windows 安装包的正式构建**请用 GitHub Actions（`windows-latest` / `ubuntu-22.04`），见 `.github/workflows/release.yml`，或推送 `v*` 标签自动触发。
 
 Windows / Linux 包**作者未实测**，见 [docs/TESTING.md](docs/TESTING.md)。
 

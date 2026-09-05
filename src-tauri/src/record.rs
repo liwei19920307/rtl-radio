@@ -97,8 +97,18 @@ impl AudioRecorder {
     }
 }
 
+fn user_home_dir() -> PathBuf {
+    #[cfg(windows)]
+    if let Ok(profile) = std::env::var("USERPROFILE") {
+        return PathBuf::from(profile);
+    }
+    std::env::var("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
+}
+
 pub fn default_record_path(freq_hz: u32) -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let home = user_home_dir();
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
