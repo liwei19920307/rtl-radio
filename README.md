@@ -152,22 +152,7 @@ rtl-radio-mac/
 - ✅ 允许：个人使用、学习、修改、再分发（保留协议）、业余无线电、非盈利场景
 - ❌ 禁止：任何商业用途（含收费分发、商业服务、企业内商用等）
 
-如需商业授权，请通过下方方式联系作者。
-
-## 支持作者
-
-如果这个项目对你有帮助，欢迎扫码赞赏（自愿，非商业授权替代品）：
-
-<table>
-  <tr>
-    <td align="center"><b>支付宝</b></td>
-    <td align="center"><b>微信</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/alipay.jpg" width="240" alt="支付宝收款码" /></td>
-    <td><img src="docs/images/wechat.jpg" width="240" alt="微信收款码" /></td>
-  </tr>
-</table>
+如需商业授权，请通过 GitHub Issues 联系作者。
 
 ## 免责声明
 
