@@ -587,10 +587,12 @@ fn run_worker(
         *error.lock() = None;
         connected.store(true, Ordering::SeqCst);
 
+        let mut connected_host = cfg.host.clone();
+        let mut connected_port = cfg.port;
         loop {
             match cmd_rx.recv_timeout(Duration::from_millis(20)) {
                 Ok(first) => {
-                    if apply_live_commands(
+                    match apply_live_commands(
                         first,
                         &cmd_rx,
                         &mut cfg,
@@ -607,9 +609,19 @@ fn run_worker(
                         &squelch_enabled,
                         &squelch_level,
                         &squelch_noise,
+                        &connected_host,
+                        connected_port,
                     )? {
-                        shutdown = true;
-                        break;
+                        LiveAction::Shutdown => {
+                            shutdown = true;
+                            break;
+                        }
+                        LiveAction::Reconnect => {
+                            *error.lock() = Some("正在切换 rtl_tcp…".into());
+                            connected.store(false, Ordering::SeqCst);
+                            break;
+                        }
+                        LiveAction::Continue => {}
                     }
                     iq_rate_retune.store(current_iq_rate, Ordering::Relaxed);
                 }
@@ -648,6 +660,16 @@ fn schedule_iq_skip(skip_iq: &AtomicU32, iq_rate_hz: u32, skip_ms: f32) {
     let chunk_ms = (chunk_bytes as f32 / (2.0 * iq_rate_hz.max(1) as f32)) * 1000.0;
     let n = ((skip_ms / chunk_ms).ceil() as u32).clamp(6, 64);
     skip_iq.store(n, Ordering::Relaxed);
+}
+
+fn endpoint_changed(cfg: &RadioConfig, host: &str, port: u16) -> bool {
+    cfg.host != host || cfg.port != port
+}
+
+enum LiveAction {
+    Continue,
+    Shutdown,
+    Reconnect,
 }
 
 fn apply_retune(
@@ -773,7 +795,9 @@ fn apply_live_commands(
     squelch_enabled: &Arc<AtomicBool>,
     squelch_level: &Arc<Mutex<f32>>,
     squelch_noise: &Arc<AtomicBool>,
-) -> Result<bool, String> {
+    connected_host: &str,
+    connected_port: u16,
+) -> Result<LiveAction, String> {
     let mut shutdown = false;
     let mut need_retune = false;
     let mut need_demod = false;
@@ -782,7 +806,10 @@ fn apply_live_commands(
         fold_command(cmd, cfg, &mut need_retune, &mut need_demod, &mut shutdown);
     }
     if shutdown {
-        return Ok(true);
+        return Ok(LiveAction::Shutdown);
+    }
+    if need_retune && endpoint_changed(cfg, connected_host, connected_port) {
+        return Ok(LiveAction::Reconnect);
     }
     if need_retune {
         apply_retune(
@@ -811,7 +838,7 @@ fn apply_live_commands(
         *squelch_level.lock() = cfg.squelch_level;
         squelch_noise.store(mode_uses_noise_squelch(&cfg.mode), Ordering::Relaxed);
     }
-    Ok(false)
+    Ok(LiveAction::Continue)
 }
 
 fn drain_commands(
@@ -850,6 +877,8 @@ fn sleep_or_command(
     cfg: &mut RadioConfig,
     shutdown: &mut bool,
 ) -> Result<bool, String> {
+    let wait_host = cfg.host.clone();
+    let wait_port = cfg.port;
     let end = std::time::Instant::now() + duration;
     while std::time::Instant::now() < end {
         match cmd_rx.recv_timeout(Duration::from_millis(200)) {
@@ -857,7 +886,12 @@ fn sleep_or_command(
                 *shutdown = true;
                 return Ok(false);
             }
-            Ok(RadioCommand::Retune(c)) => *cfg = c,
+            Ok(RadioCommand::Retune(c)) => {
+                *cfg = c;
+                if endpoint_changed(cfg, &wait_host, wait_port) {
+                    return Ok(true);
+                }
+            }
             Ok(RadioCommand::SetDemod {
                 bandwidth_hz,
                 deemphasis,

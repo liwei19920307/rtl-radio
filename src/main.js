@@ -303,11 +303,12 @@ function loadSettingsStore() {
 }
 
 function saveSettingsStore() {
+  const endpoint = parseHostPort();
   localStorage.setItem(
     SETTINGS_KEY,
     JSON.stringify({
-      host: host.value.trim(),
-      port: Number(port.value),
+      host: endpoint.host,
+      port: endpoint.port,
       mode: mode.value,
       freqHz: exactFreqHz(),
       gain: Number(gain.value),
@@ -1249,11 +1250,31 @@ function applyModeUi(opts = {}) {
   fillGridRow(presets);
 }
 
+function parseHostPort() {
+  let hostText = host?.value?.trim() ?? "";
+  let portNum = Number(port?.value);
+  if (hostText.includes(":") && !hostText.startsWith("[")) {
+    const idx = hostText.lastIndexOf(":");
+    const hostPart = hostText.slice(0, idx).trim();
+    const portPart = hostText.slice(idx + 1).trim();
+    if (hostPart) hostText = hostPart;
+    if (portPart) portNum = Number(portPart);
+  }
+  if (!Number.isFinite(portNum) || portNum <= 0) portNum = 1234;
+  return { host: hostText, port: portNum };
+}
+
+function syncHostPortFields({ host: hostText, port: portNum }) {
+  if (host) host.value = hostText;
+  if (port) port.value = String(portNum);
+}
+
 function config() {
+  const endpoint = parseHostPort();
   const m = currentMode();
   return {
-    host: host.value.trim(),
-    port: Number(port.value),
+    host: endpoint.host,
+    port: endpoint.port,
     freq_hz: exactFreqHz(),
     gain_db: Number(gain.value),
     gain_auto: isToggleOn(gainAuto),
@@ -1928,8 +1949,15 @@ function scheduleAudioSettings(ms = 16) {
   audioPushTimer = setTimeout(() => pushAudioSettings(), ms);
 }
 
-host?.addEventListener("change", saveSettingsStore);
-port?.addEventListener("change", saveSettingsStore);
+function onHostPortEdited() {
+  const endpoint = parseHostPort();
+  syncHostPortFields(endpoint);
+  saveSettingsStore();
+  if (playing) scheduleRetune(0);
+}
+
+host?.addEventListener("change", onHostPortEdited);
+port?.addEventListener("change", onHostPortEdited);
 
 resetSettingsBtn?.addEventListener("click", () => resetToDefaults());
 
