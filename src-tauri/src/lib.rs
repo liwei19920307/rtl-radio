@@ -26,6 +26,7 @@ use tauri::State;
 struct DemodPatch {
     bandwidth_hz: u32,
     deemphasis: bool,
+    stereo: bool,
 }
 
 /// Live audio patch (camelCase in JS).
@@ -77,7 +78,7 @@ fn radio_retune(state: State<AppState>, config: RadioConfig) -> Result<(), Strin
 fn radio_set_demod(state: State<AppState>, patch: DemodPatch) -> Result<(), String> {
     let guard = state.session.lock();
     if let Some(session) = guard.as_ref() {
-        session.set_demod(patch.bandwidth_hz, patch.deemphasis)
+        session.set_demod(patch.bandwidth_hz, patch.deemphasis, patch.stereo)
     } else {
         Err("not playing".into())
     }

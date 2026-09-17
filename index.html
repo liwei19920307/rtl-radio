@@ -73,7 +73,7 @@
                   <dt>↺</dt><dd>恢复连接与收听设置（保留收藏、搜台结果）</dd>
                   <dt>绿点</dt><dd>rtl_tcp 已连接</dd>
                   <dt>IQ丢 / 音</dt><dd>网络空档/溢出、音频断续累计（越小越稳）</dd>
-                  <dt>LEVEL</dt><dd>信号强度（绿=有信号；开静噪时绿=载波开口）</dd>
+                  <dt>LEVEL / L/R</dt><dd>信号强度；FM 模式点击顶栏 L/R 切换立体声双条与单声道 LEVEL</dd>
                 </dl>
               </section>
             </div>
@@ -83,20 +83,29 @@
           <span id="conn-dot" class="conn-dot" title="未连接"></span>
           <span id="link-quality" class="status-pill link-quality mono" title="链路质量：IQ 丢块 / 音频问题">链路 —</span>
           <span id="status-text" class="status-pill">就绪</span>
-          <div id="level-mono" class="level-wrap level-mono" title="信号指示：黄=底噪，绿=有信号。打开静噪后绿=开口说话">
-            <span class="label">LEVEL</span>
-            <div class="level-bar"><div id="level-fill" class="level-fill"></div></div>
-          </div>
-          <div id="level-stereo" class="level-wrap level-stereo" hidden title="FM 立体声左右声道峰值">
-            <span class="label">L/R</span>
-            <div class="level-channels">
-              <div class="level-row">
-                <span class="level-ch">L</span>
-                <div class="level-bar"><div id="level-fill-l" class="level-fill"></div></div>
-              </div>
-              <div class="level-row">
-                <span class="level-ch">R</span>
-                <div class="level-bar"><div id="level-fill-r" class="level-fill"></div></div>
+          <div class="level-slot">
+            <div id="level-mono" class="level-wrap level-mono" title="信号指示：黄=底噪，绿=有信号。打开静噪后绿=开口说话">
+              <button
+                type="button"
+                class="level-lr-btn fm-stereo-toggle"
+                hidden
+                aria-pressed="false"
+                title="FM：点击切换立体声 L/R 与单声道 LEVEL"
+              >L/R</button>
+              <span class="label">LEVEL</span>
+              <div class="level-bar"><div id="level-fill" class="level-fill"></div></div>
+            </div>
+            <div id="level-stereo" class="level-wrap level-stereo compact-stereo" hidden title="FM 立体声（上=L 下=R，点击 L/R 切回单声道）">
+              <button
+                type="button"
+                class="level-lr-btn fm-stereo-toggle"
+                hidden
+                aria-pressed="true"
+                title="FM：点击切换立体声 L/R 与单声道 LEVEL"
+              >L/R</button>
+              <div class="level-channels">
+                <div class="level-row"><div class="level-bar"><div id="level-fill-l" class="level-fill"></div></div></div>
+                <div class="level-row"><div class="level-bar"><div id="level-fill-r" class="level-fill"></div></div></div>
               </div>
             </div>
           </div>

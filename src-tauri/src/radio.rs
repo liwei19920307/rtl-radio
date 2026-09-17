@@ -35,6 +35,9 @@ pub struct RadioConfig {
     pub squelch_enabled: bool,
     #[serde(default = "default_squelch_level")]
     pub squelch_level: f32,
+    /// WBFM stereo demod (mono path when false).
+    #[serde(default = "default_true")]
+    pub stereo: bool,
 }
 
 fn default_buffer_preset() -> String {
@@ -109,7 +112,11 @@ pub struct RadioStatus {
 
 enum RadioCommand {
     Retune(RadioConfig),
-    SetDemod { bandwidth_hz: u32, deemphasis: bool },
+    SetDemod {
+        bandwidth_hz: u32,
+        deemphasis: bool,
+        stereo: bool,
+    },
     SetAudio {
         squelch_enabled: bool,
         squelch_level: f32,
@@ -193,10 +200,16 @@ impl RadioController {
         self.send(RadioCommand::Retune(cfg))
     }
 
-    pub fn set_demod(&self, bandwidth_hz: u32, deemphasis: bool) -> Result<(), String> {
+    pub fn set_demod(
+        &self,
+        bandwidth_hz: u32,
+        deemphasis: bool,
+        stereo: bool,
+    ) -> Result<(), String> {
         self.send(RadioCommand::SetDemod {
             bandwidth_hz,
             deemphasis,
+            stereo,
         })
     }
 
@@ -710,7 +723,7 @@ fn same_mode_family(mode: &str, demod: &Demodulator) -> bool {
 fn apply_demod_settings(demod: &mut Demodulator, cfg: &RadioConfig) {
     demod.set_bandwidth_hz(resolve_bandwidth_hz(cfg));
     demod.set_deemphasis(cfg.deemphasis);
-    demod.set_stereo(cfg.mode.eq_ignore_ascii_case("wbfm"));
+    demod.set_stereo(cfg.mode.eq_ignore_ascii_case("wbfm") && cfg.stereo);
 }
 
 fn fold_command(cmd: RadioCommand, cfg: &mut RadioConfig, need_retune: &mut bool, need_demod: &mut bool, shutdown: &mut bool) {
@@ -722,9 +735,11 @@ fn fold_command(cmd: RadioCommand, cfg: &mut RadioConfig, need_retune: &mut bool
         RadioCommand::SetDemod {
             bandwidth_hz,
             deemphasis,
+            stereo,
         } => {
             cfg.bandwidth_hz = bandwidth_hz;
             cfg.deemphasis = deemphasis;
+            cfg.stereo = stereo;
             if !*need_retune {
                 *need_demod = true;
             }
@@ -810,9 +825,11 @@ fn drain_commands(
             RadioCommand::SetDemod {
                 bandwidth_hz,
                 deemphasis,
+                stereo,
             } => {
                 cfg.bandwidth_hz = bandwidth_hz;
                 cfg.deemphasis = deemphasis;
+                cfg.stereo = stereo;
             }
             RadioCommand::SetAudio {
                 squelch_enabled,
@@ -844,9 +861,11 @@ fn sleep_or_command(
             Ok(RadioCommand::SetDemod {
                 bandwidth_hz,
                 deemphasis,
+                stereo,
             }) => {
                 cfg.bandwidth_hz = bandwidth_hz;
                 cfg.deemphasis = deemphasis;
+                cfg.stereo = stereo;
             }
             Ok(RadioCommand::SetAudio {
                 squelch_enabled,

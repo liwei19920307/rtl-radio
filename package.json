@@ -1,7 +1,7 @@
 {
   "name": "rtl-radio",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cross-platform SDR receiver client via rtl_tcp (FM, AM, NFM, SSB)",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",

@@ -195,6 +195,8 @@ const linkQuality = document.getElementById("link-quality");
 const bandwidthEl = document.getElementById("bandwidth-khz");
 const bwLabel = document.getElementById("bw-label");
 const bufferPreset = document.getElementById("buffer-preset");
+const fmStereoToggles = () => document.querySelectorAll(".fm-stereo-toggle");
+let fmStereoOn = true;
 const squelchBtn = document.getElementById("squelch");
 const squelchLevel = document.getElementById("squelch-level");
 const squelchLabel = document.getElementById("squelch-label");
@@ -312,6 +314,7 @@ function saveSettingsStore() {
       gainAuto: isToggleOn(gainAuto),
       ppm: Number(ppm.value),
       bufferPreset: bufferPreset?.value ?? "balanced",
+      fmStereo: fmStereoOn,
       squelch: isToggleOn(squelchBtn),
       squelchLevel: squelchUiValue(),
       voiceRecord: isToggleOn(voiceRecordBtn),
@@ -356,6 +359,7 @@ function applySavedSettings(s) {
     if (ppmLabel) ppmLabel.textContent = s.ppm;
   }
   if (s.bufferPreset && bufferPreset) bufferPreset.value = s.bufferPreset;
+  if (s.fmStereo != null) fmStereoOn = !!s.fmStereo;
   if (s.squelch != null) setToggleOn(squelchBtn, s.squelch);
   if (s.squelchLevel != null && squelchLevel) {
     squelchLevel.value = String(normalizeSquelchUi(s.squelchLevel));
@@ -574,6 +578,7 @@ async function resetToDefaults() {
   ppm.value = 0;
   if (ppmLabel) ppmLabel.textContent = "0";
 
+  fmStereoOn = true;
   setToggleOn(squelchBtn, false);
   if (squelchLevel) squelchLevel.value = 30;
   updateSquelchLabel();
@@ -720,6 +725,7 @@ async function pushDemodSettings() {
       patch: {
         bandwidthHz,
         deemphasis: deemphasisEnabled(),
+        stereo: fmStereoEnabled(),
       },
     });
   } catch (e) {
@@ -772,6 +778,15 @@ const LEVEL_MARGIN = {
 let levelHot = false;
 let levelSignalUntil = 0;
 let levelNoiseFloor = 0.008;
+/** FM 立体声电平条：包络平滑 + 慢速自动量程（保留顶部位移，避免一直顶满） */
+const STEREO_METER_ATTACK = 0.42;
+const STEREO_METER_RELEASE = 0.14;
+const STEREO_METER_MIN_FS = 0.055;
+const STEREO_METER_MAX_FS = 0.32;
+const STEREO_METER_HEADROOM = 0.88;
+let stereoMeterEnvL = 0;
+let stereoMeterEnvR = 0;
+let stereoMeterFs = 0.13;
 
 const SCAN_THRESH = {
   wbfm: 12,
@@ -1048,6 +1063,92 @@ function resetLevelSquelch() {
   levelSignalUntil = 0;
   levelNoiseFloor = 0.008;
   if (levelMono) levelMono.classList.remove("has-signal");
+  if (levelStereo) levelStereo.classList.remove("has-signal");
+  if (levelFillL) levelFillL.style.width = "0%";
+  if (levelFillR) levelFillR.style.width = "0%";
+  stereoMeterEnvL = 0;
+  stereoMeterEnvR = 0;
+  stereoMeterFs = 0.13;
+  syncFmStereoUi();
+}
+
+function fmStereoEnabled() {
+  return mode.value === "wbfm" && fmStereoOn;
+}
+
+function syncFmStereoUi() {
+  const isWbfm = mode.value === "wbfm";
+  const stereo = fmStereoEnabled();
+  for (const btn of fmStereoToggles()) {
+    btn.hidden = !isWbfm;
+    btn.setAttribute("aria-pressed", stereo ? "true" : "false");
+    btn.classList.toggle("active", stereo);
+  }
+  if (levelMono) {
+    levelMono.hidden = isWbfm && stereo;
+    const monoLabel = levelMono.querySelector(".label");
+    if (monoLabel) monoLabel.hidden = isWbfm;
+    const monoToggle = levelMono.querySelector(".fm-stereo-toggle");
+    if (monoToggle) monoToggle.hidden = !isWbfm || stereo;
+  }
+  if (levelStereo) {
+    levelStereo.hidden = !isWbfm || !stereo;
+    const stereoToggle = levelStereo.querySelector(".fm-stereo-toggle");
+    if (stereoToggle) stereoToggle.hidden = !isWbfm || !stereo;
+  }
+}
+
+function toggleFmStereo() {
+  if (mode.value !== "wbfm") return;
+  fmStereoOn = !fmStereoOn;
+  syncFmStereoUi();
+  saveSettingsStore();
+  if (playing) {
+    scheduleDemodSettings(0);
+    retune();
+  }
+}
+
+function meterWidthPct(value) {
+  const x = Math.max(0, value ?? 0);
+  return `${Math.min(100, x * 100)}%`;
+}
+
+function stereoMeterEnvStep(current, sample) {
+  const x = Math.max(0, sample ?? 0);
+  const rate = x > current ? STEREO_METER_ATTACK : STEREO_METER_RELEASE;
+  return current + (x - current) * rate;
+}
+
+function stereoMeterUpdateFs(peak) {
+  const targetHigh = Math.max(peak * 1.12, STEREO_METER_MIN_FS);
+  const targetLow = Math.max(peak * 2.4, STEREO_METER_MIN_FS);
+  if (peak > stereoMeterFs * 0.82) {
+    stereoMeterFs = Math.min(
+      STEREO_METER_MAX_FS,
+      stereoMeterFs + (targetHigh - stereoMeterFs) * 0.1,
+    );
+  } else if (peak < stereoMeterFs * 0.42) {
+    stereoMeterFs = Math.max(
+      STEREO_METER_MIN_FS,
+      stereoMeterFs + (targetLow - stereoMeterFs) * 0.025,
+    );
+  }
+}
+
+function stereoMeterWidthPct(envelope) {
+  const pct = (Math.max(0, envelope) / stereoMeterFs) * STEREO_METER_HEADROOM * 100;
+  return `${Math.min(92, Math.max(2, pct))}%`;
+}
+
+function stereoBarWidths(levelL, levelR) {
+  stereoMeterEnvL = stereoMeterEnvStep(stereoMeterEnvL, levelL);
+  stereoMeterEnvR = stereoMeterEnvStep(stereoMeterEnvR, levelR);
+  stereoMeterUpdateFs(Math.max(stereoMeterEnvL, stereoMeterEnvR));
+  return {
+    l: stereoMeterWidthPct(stereoMeterEnvL),
+    r: stereoMeterWidthPct(stereoMeterEnvR),
+  };
 }
 
 function currentMode() {
@@ -1125,10 +1226,8 @@ function applyModeUi(opts = {}) {
   applySpectrumZoomForMode();
   updateReadouts();
 
-  const isWbfm = mode.value === "wbfm";
-  if (levelMono) levelMono.hidden = isWbfm;
-  if (levelStereo) levelStereo.hidden = !isWbfm;
-  if (isWbfm) resetLevelSquelch();
+  syncFmStereoUi();
+  if (mode.value === "wbfm") resetLevelSquelch();
 
   presets.replaceChildren();
   const all = [...m.presets, ...(userPresets[mode.value] || [])];
@@ -1162,6 +1261,7 @@ function config() {
     mode: mode.value,
     bandwidth_hz: currentBandwidthHz(),
     deemphasis: deemphasisEnabled(),
+    stereo: fmStereoEnabled(),
     buffer_preset: bufferPreset?.value ?? "balanced",
     squelch_enabled: isToggleOn(squelchBtn),
     squelch_level: squelchUiValue() / 100,
@@ -1235,13 +1335,17 @@ function applyLevelUi(level, levelL, levelR) {
     levelHot = false;
   }
   if (levelMono) levelMono.classList.toggle("has-signal", levelHot);
+  if (levelStereo) levelStereo.classList.toggle("has-signal", levelHot);
 
   if (now - lastLevelUi < 32) return;
   lastLevelUi = now;
-  const pct = (v) => `${Math.min(100, (v ?? 0) * 100)}%`;
-  if (levelFill) levelFill.style.width = pct(level);
-  if (levelFillL) levelFillL.style.width = pct(levelL);
-  if (levelFillR) levelFillR.style.width = pct(levelR);
+  if (fmStereoEnabled()) {
+    const bars = stereoBarWidths(levelL, levelR);
+    if (levelFillL) levelFillL.style.width = bars.l;
+    if (levelFillR) levelFillR.style.width = bars.r;
+  } else if (levelFill) {
+    levelFill.style.width = meterWidthPct(level);
+  }
 }
 
 function voiceOnMs() {
@@ -1792,6 +1896,14 @@ bufferPreset?.addEventListener("change", () => {
   saveSettingsStore();
   if (playing) retune();
 });
+
+for (const btn of fmStereoToggles()) {
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFmStereo();
+  });
+}
 
 bindToggle(squelchBtn, () => {
   saveSettingsStore();

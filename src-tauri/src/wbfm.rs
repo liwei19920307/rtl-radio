@@ -70,7 +70,7 @@ impl PilotPll {
         self.pilot_env += 0.002 * (pilot.abs() - self.pilot_env);
 
         let cos38 = (2.0 * self.phase19).cos();
-        let lock = ((self.pilot_env - 0.03) * 22.0).clamp(0.0, 1.0);
+        let lock = ((self.pilot_env - 0.02) * 18.0).clamp(0.0, 1.0);
         (cos38, lock)
     }
 }
@@ -295,12 +295,10 @@ impl WbfmDemod {
                     // Strip 19 kHz before L+R and 38 kHz mix (pilot × 38 kHz aliases back to 19 kHz).
                     let no_pilot = self.pilot_notch.run(composite);
                     let lr_sum = self.sum_lp.run(no_pilot);
-                    let target = if lock > 0.55 {
-                        ((lock - 0.55) / 0.45).clamp(0.0, 1.0)
-                    } else {
-                        0.0
-                    };
-                    self.blend += 0.00025 * (target - self.blend);
+                    // Fold to mono only when the 19 kHz pilot is very weak; previous 0.55 gate
+                    // kept blend at 0 on most stations and sounded like mono.
+                    let stereo_mix = ((lock - 0.12) / 0.88).clamp(0.0, 1.0);
+                    self.blend += 0.004 * (stereo_mix - self.blend);
                     let lr_diff = self.diff_lp.run(no_pilot * cos38) * self.blend;
                     let mut l = (lr_sum + lr_diff) * 0.5;
                     let mut r = (lr_sum - lr_diff) * 0.5;
