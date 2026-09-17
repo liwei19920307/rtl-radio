@@ -141,6 +141,19 @@ fn radio_record_stop(state: State<AppState>) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
+fn open_local_network_settings() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork")
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    Err("unsupported platform".into())
+}
+
+#[tauri::command]
 fn reveal_path_in_file_manager(path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -188,6 +201,7 @@ pub fn run() {
             radio_status,
             radio_record_start,
             radio_record_stop,
+            open_local_network_settings,
             reveal_path_in_file_manager,
         ])
         .run(tauri::generate_context!())

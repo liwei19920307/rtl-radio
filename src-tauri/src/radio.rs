@@ -382,7 +382,7 @@ fn run_worker(
 
         let mut client = RtlTcpClient::new(cfg.host.clone(), cfg.port);
         if let Err(e) = client.connect() {
-            *error.lock() = Some(format!("连接失败: {e}，3 秒后重试"));
+            *error.lock() = Some(connection_error_message(&cfg, &e));
             if sleep_or_command(&cmd_rx, Duration::from_secs(3), &mut cfg, &mut shutdown)? {
                 continue;
             }
@@ -585,7 +585,6 @@ fn run_worker(
         });
 
         *error.lock() = None;
-        connected.store(true, Ordering::SeqCst);
 
         let mut connected_host = cfg.host.clone();
         let mut connected_port = cfg.port;
@@ -664,6 +663,18 @@ fn schedule_iq_skip(skip_iq: &AtomicU32, iq_rate_hz: u32, skip_ms: f32) {
 
 fn endpoint_changed(cfg: &RadioConfig, host: &str, port: u16) -> bool {
     cfg.host != host || cfg.port != port
+}
+
+fn connection_error_message(cfg: &RadioConfig, err: &str) -> String {
+    let endpoint = format!("{}:{}", cfg.host, cfg.port);
+    let hint = if err.contains("No route to host") || err.contains("os error 65") {
+        "macOS 未允许本地网络：请打开「系统设置 → 隐私与安全性 → 本地网络」，开启 RTL Radio（若没有，先退出 App 再打开并重试）"
+    } else if cfg.host == "127.0.0.1" || cfg.host == "localhost" {
+        "请确认本机已运行 rtl_tcp，且端口正确"
+    } else {
+        "请确认 rtl_tcp 已启动、防火墙允许 1234 端口"
+    };
+    format!("连接失败 {endpoint} — {err}。{hint}，3 秒后重试")
 }
 
 enum LiveAction {

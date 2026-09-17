@@ -1190,6 +1190,8 @@ function applySpectrumZoomForMode() {
   if (zoomEl) zoomEl.value = String(z);
 }
 
+let localNetworkHintShown = false;
+
 function spectrumFrameMatchesMode(frame) {
   if (!frame?.sample_rate_hz || !frame?.center_hz) return false;
   const expectSr = defaultSampleRateHz();
@@ -1429,7 +1431,9 @@ function attachSpectrumChannel() {
   spectrumChannel = new Channel();
   spectrumChannel.onmessage = (frame) => {
     applyLinkQuality(frame);
-    if (playing && !spectrumFrameMatchesMode(frame)) return;
+    if (playing && !spectrumFrameMatchesMode(frame)) {
+      return;
+    }
     attachFrameBins(frame);
     latestSpec = frame;
     applyLevelUi(frame.level, frame.level_l ?? frame.level, frame.level_r ?? frame.level);
@@ -1437,8 +1441,18 @@ function attachSpectrumChannel() {
     audioViz?.pushSpectrum(frame, currentBandwidthHz());
     const reconnecting = !!frame.error?.includes("重连") || !!frame.error?.includes("连接");
     setConnState(!!frame.connected, reconnecting);
-    if (frame.error) setStatus(frame.error, true);
-    else if (playing) setStatusLive(Number(freq.value));
+    if (frame.error) {
+      setStatus(frame.error, true);
+      if (
+        !localNetworkHintShown &&
+        (frame.error.includes("No route to host") ||
+          frame.error.includes("本地网络") ||
+          frame.error.includes("os error 65"))
+      ) {
+        localNetworkHintShown = true;
+        invoke("open_local_network_settings").catch(() => {});
+      }
+    } else if (playing) setStatusLive(Number(freq.value));
     updateSpanReadout(frame.sample_rate_hz);
     if (bandwidthEl && frame.sample_rate_hz) {
       bandwidthEl.min = "0.2";
@@ -1703,10 +1717,22 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+let startInFlight = false;
+
 async function start() {
+  if (startInFlight || playing) return;
+  startInFlight = true;
+  playBtn.disabled = true;
   try {
+    const endpoint = parseHostPort();
+    if (!endpoint.host) {
+      setStatus("错误: 请填写 rtl_tcp 主机地址", true);
+      return;
+    }
+    syncHostPortFields(endpoint);
     saveSettingsStore();
     spectrumView?.resetPan();
+    setStatus("正在连接 rtl_tcp…");
     await invoke("radio_start", { config: config(), spectrumChannel: attachSpectrumChannel() });
     playing = true;
     playBtn.textContent = "停止";
@@ -1716,6 +1742,9 @@ async function start() {
     setConnState(false, true);
   } catch (e) {
     setStatus(`错误: ${e}`, true);
+  } finally {
+    startInFlight = false;
+    playBtn.disabled = false;
   }
 }
 
@@ -1957,7 +1986,9 @@ function onHostPortEdited() {
 }
 
 host?.addEventListener("change", onHostPortEdited);
+host?.addEventListener("blur", onHostPortEdited);
 port?.addEventListener("change", onHostPortEdited);
+port?.addEventListener("blur", onHostPortEdited);
 
 resetSettingsBtn?.addEventListener("click", () => resetToDefaults());
 

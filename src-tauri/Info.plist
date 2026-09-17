@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>RTL Radio 需要访问局域网以连接 rtl_tcp 服务器（例如 192.168.x.x:1234）。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_rtl_tcp._tcp</string>
+	</array>
+</dict>
+</plist>
